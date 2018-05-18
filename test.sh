@@ -1,1 +1,2 @@
-echo "Sample test"
+echo "Sample test" >> test.log
+echo "mani" >> test.log
