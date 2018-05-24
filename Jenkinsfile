@@ -1,5 +1,6 @@
 pipeline {
     agent any
+	stages {
             stage('build') {
             // Checkout the app at the given commit sha from the webhook
             // Install dependencies, create a new .env file and generate a new key, just for testing
@@ -30,3 +31,4 @@ pipeline {
 			sh "rpm -qa nginx"
         }
     } 
+}
