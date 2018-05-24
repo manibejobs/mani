@@ -1,44 +1,23 @@
-// see https://dzone.com/refcardz/continuous-delivery-with-jenkins-workflow for tutorial
-// see https://documentation.cloudbees.com/docs/cookbook/_pipeline_dsl_keywords.html for dsl reference
-// This Jenkinsfile should simulate a minimal Jenkins pipeline and can serve as a starting point.
-// NOTE: sleep commands are solelely inserted for the purpose of simulating long running tasks when you run the pipeline
 node {
-   // Mark the code checkout 'stage'....
-   stage 'checkout'
+    git url: 'https://github.com/jfrogdev/project-examples.git'
 
-   // Get some code from a GitHub repository
-   git url: 'https://github.com/kesselborn/jenkinsfile'
-   sh 'git clean -fdx; sleep 4;'
+    // Get Artifactory server instance, defined in the Artifactory Plugin administration page.
+    def server = Artifactory.server SERVER_ID
 
-   // Get the maven tool.
-   // ** NOTE: This 'mvn' maven tool must be configured
-   // **       in the global configuration.
-   def mvnHome = tool 'mvn'
+    def buildInfo = Artifactory.newBuildInfo()
+    // Set custom build name and number.
+    buildInfo.setName 'holyFrog'
+    buildInfo.setNumber '42'
 
-   stage 'build'
-   // set the version of the build artifact to the Jenkins BUILD_NUMBER so you can
-   // map artifacts to Jenkins builds
-   sh "${mvnHome}/bin/mvn versions:set -DnewVersion=${env.BUILD_NUMBER}"
-   sh "${mvnHome}/bin/mvn package"
+    // Read the upload spec which was downloaded from github.
+    def uploadSpec = readFile 'jenkins-examples/pipeline-examples/resources/recursive-flat-upload.json'
+    // Upload to Artifactory.
+    server.upload spec: uploadSpec, buildInfo: buildInfo
 
-   stage 'test'
-   parallel 'test': {
-     sh "${mvnHome}/bin/mvn test; sleep 2;"
-   }, 'verify': {
-     sh "${mvnHome}/bin/mvn verify; sleep 3"
-   }
+    // The download file contains pattern for downloading artifacts to the root directory by setting recursive=false
+    def downloadSpec = readFile 'jenkins-examples/pipeline-examples/resources/aql-download.json'
+    server.download spec: downloadSpec, buildInfo: buildInfo
 
-   stage 'archive'
-   archive 'target/*.jar'
-}
-
-
-node {
-   stage 'deploy Canary'
-   sh 'echo "write your deploy code here"; sleep 5;'
-
-   stage 'deploy Production'
-   input 'Proceed?'
-   sh 'echo "write your deploy code here"; sleep 6;'
-   archive 'target/*.jar'
+    // Publish build info.
+    server.publishBuildInfo buildInfo
 }
