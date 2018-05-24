@@ -1,23 +1,35 @@
-node {
-    git url: 'https://github.com/jfrogdev/project-examples.git'
+#!/usr/bin/env groovy
+pipeline {
+    agent any
+node('master') {
+            stage('build') {
+            // Checkout the app at the given commit sha from the webhook
+            // Install dependencies, create a new .env file and generate a new key, just for testing
+            sh "pwd"
+            sh "cd /home/jenkins"
+            sh "pwd"
+            sh "wget -O /home/jenkins/nginx-0.1.12.tar.gz http://nginx.org/download/nginx-0.1.12.tar.gz" 
+            //sh "cp .env.example .env"
+            //sh "php artisan key:generate"
 
-    // Get Artifactory server instance, defined in the Artifactory Plugin administration page.
-    def server = Artifactory.server SERVER_ID
+            // Run any static asset building, if needed
+            // sh "npm install && gulp --production"
+        }
 
-    def buildInfo = Artifactory.newBuildInfo()
-    // Set custom build name and number.
-    buildInfo.setName 'holyFrog'
-    buildInfo.setNumber '42'
+        stage('build nginx rpm') {
+            sh "mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS,tmp}"
+            sh "cp ~/nginx-0.1.12.tar.gz ~/rpmbuild/SOURCES"
+            sh "cp ~/nginx.spec ~/rpmbuild/SPECS"
+            sh "cd ~/rpmbuild"
+            sh "rpmbuild -ba ~/rpmbuild/SPECS/nginx.spec"
 
-    // Read the upload spec which was downloaded from github.
-    def uploadSpec = readFile 'jenkins-examples/pipeline-examples/resources/recursive-flat-upload.json'
-    // Upload to Artifactory.
-    server.upload spec: uploadSpec, buildInfo: buildInfo
+        }
 
-    // The download file contains pattern for downloading artifacts to the root directory by setting recursive=false
-    def downloadSpec = readFile 'jenkins-examples/pipeline-examples/resources/aql-download.json'
-    server.download spec: downloadSpec, buildInfo: buildInfo
-
-    // Publish build info.
-    server.publishBuildInfo buildInfo
+        stage('deploy') {
+            // If we had ansible installed on the server, setup to run an ansible playbook
+            // sh "ansible-playbook -i ./ansible/hosts ./ansible/deploy.yml"
+            sh "ansible-playbook -i /etc//ansible/hosts /etc/ansible/install.yml -u root"
+			sh "rpm -qa nginx"
+        }
+    } 
 }
