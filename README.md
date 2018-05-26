@@ -1,0 +1,2 @@
+# mani
+Test Git repository
