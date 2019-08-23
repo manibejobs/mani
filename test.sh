@@ -1,3 +1,3 @@
 #!/bin/bash
 echo `date`
-echo "updated info"
+echo `git --version`
